@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엔빵형 - 정산 현황판</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-[#0B0F19] text-gray-800 dark:text-gray-100 min-h-screen flex flex-col items-center justify-start p-4 pt-28 pb-24 sm:p-6 sm:pt-28 transition-colors duration-300 select-none">
+
+    <!-- Top Bar -->
+    <header class="fixed top-0 left-0 right-0 bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 z-10 shadow-lg">
+        <div class="max-w-md mx-auto p-4 flex items-center justify-between">
+            <img src="nBbro 로고_투명_가로.png" alt="nBbro Logo" id="logo-image" class="h-12 cursor-pointer">            
+            <button id="menu-button" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Popup Modal -->
+    <div id="popup-menu" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-11/12 max-w-sm p-6 text-center">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">설정</h3>
+                <button id="close-menu-button" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="space-y-2 mb-4">
+                <a href="index.html" class="block w-full text-center px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold transition border border-gray-200 dark:border-gray-700">엔빵형 홈</a>
+                <a href="MVP.html" class="block w-full text-center px-4 py-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl text-sm font-semibold transition border border-blue-200 dark:border-blue-900/50">엔빵형 MVP</a>
+            </div>
+            <button id="theme-toggle-button" class="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700">
+                <span id="theme-toggle-text">다크 모드</span>
+                <svg id="theme-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 메인 컨테이너 -->
+    <main class="max-w-md w-full space-y-8">
+
+        <!-- [STEP 1] 정산 입력란 -->
+        <section class="bg-white dark:bg-[#161F30] p-6 rounded-2xl shadow-xl space-y-5 transition-colors duration-300">
+            <h2 class="text-lg font-black text-black dark:text-white uppercase tracking-wider">엔빵형 정산 현황판</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-300 mb-1.5 font-medium">총 지출 금액 (원)</label>
+                    <input type="number" id="totalAmount" placeholder="예: 100000"
+                        class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3.5 text-lg font-bold text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-300 mb-1.5 font-medium">정산할 인원 (방장 포함 총 인원)</label>
+                    <input type="number" id="totalPeople" placeholder="예: 4" min="2"
+                        class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3.5 text-lg font-bold text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                </div>
+                <div class="bg-gray-50 dark:bg-[#0B0F19] rounded-xl p-4 text-center transition-colors duration-300">
+                    <p class="text-xs text-gray-500 dark:text-gray-300">1인당 정산 금액</p>
+                    <p class="text-2xl font-black text-gray-950 dark:text-white mt-1"><span id="calcResult" class="text-gray-950 dark:text-white">0</span> 원
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-300 mb-1.5 font-medium">돈을 받을 내 계좌번호</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="bankName"
+                            class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 text-xs text-gray-950 dark:text-white focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                            <option value="">은행 선택</option>
+                            <option value="토스뱅크">토스뱅크</option>
+                            <option value="카카오뱅크">카카오뱅크</option>
+                            <option value="신한">신한</option>
+                            <option value="국민">국민</option>
+                            <option value="direct">직접 입력</option>
+                        </select>
+                        <input type="text" id="bankNameDirect" placeholder="은행명 직접 입력"
+                            class="hidden w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                    </div>
+                    <input type="text" id="accountNumber" placeholder="계좌번호 입력"
+                        class="w-full mt-2 bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                </div>
+            </div>
+        </section>
+
+        <!-- [STEP 2] 빌런 설정 -->
+        <section class="bg-white dark:bg-[#161F30] p-6 rounded-2xl shadow-xl space-y-4 transition-colors duration-300">
+            <h2 class="text-lg font-black text-black dark:text-white uppercase tracking-wider">미입금 빌런(타깃) 설정</h2>
+            <div class="space-y-3">
+                <input type="text" id="villainName" placeholder="빌런 이름 또는 닉네임"
+                    class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                <input type="text" id="villainContact" placeholder="빌런 연락처 (예: 010-XXXX-XXXX)"
+                    class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <label class="flex items-center justify-center p-3 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 text-xs font-semibold cursor-pointer select-none">
+                        <input type="radio" name="mode" value="soft" class="sr-only" checked> 순한맛 알림
+                    </label>
+                    <label class="flex items-center justify-center p-3 rounded-xl bg-blue-600 text-white text-xs font-semibold cursor-pointer select-none">
+                        <input type="radio" name="mode" value="hard" class="sr-only"> 매운맛 독촉
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <button id="generateBtn"
+            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition duration-200 transform active:scale-[0.98] text-sm shadow-lg shadow-blue-500/30">
+            엔빵형 링크 생성
+        </button>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuButton = document.getElementById('menu-button');
+            const popupMenu = document.getElementById('popup-menu');
+            const closeMenuButton = document.getElementById('close-menu-button');
+            const themeToggleButton = document.getElementById('theme-toggle-button');
+            const themeToggleText = document.getElementById('theme-toggle-text');
+            const themeIcon = document.getElementById('theme-icon');
+            const logoImage = document.getElementById('logo-image');
+            
+            const lightLogo = 'nBbro 로고_투명_가로.png';
+            const darkLogo = 'nBbro 로고_투명다크_가로.png';
+            const sunIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m8.66-8.66l-.707-.707M4.04 4.04l-.707-.707m15.92 0l-.707.707M4.04 19.96l-.707.707M21 12h-1M4 12H3m16.24-4.24l.707-.707M4.76 4.76l.707-.707M12 18a6 6 0 100-12 6 6 0 000 12z" />`;
+            const moonIcon = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />`;
+
+            function applyTheme(theme) {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    if (logoImage) logoImage.src = darkLogo;
+                    themeToggleText.innerText = '라이트 모드';
+                    themeIcon.innerHTML = sunIcon;
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    if (logoImage) logoImage.src = lightLogo;
+                    themeToggleText.innerText = '다크 모드';
+                    themeIcon.innerHTML = moonIcon;
+                }
+            }
+
+            menuButton.addEventListener('click', () => popupMenu.classList.remove('hidden'));
+            closeMenuButton.addEventListener('click', () => popupMenu.classList.add('hidden'));
+
+            themeToggleButton.addEventListener('click', () => {
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                const newTheme = isDarkMode ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+
+            if (logoImage) { logoImage.addEventListener('click', () => { location.reload(); }); }
+
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+            // Bank selection logic
+            const bankNameSelect = document.getElementById('bankName');
+            const bankNameDirect = document.getElementById('bankNameDirect');
+            bankNameSelect.addEventListener('change', () => {
+                if (bankNameSelect.value === 'direct') {
+                    bankNameDirect.classList.remove('hidden');
+                } else {
+                    bankNameDirect.classList.add('hidden');
+                    bankNameDirect.value = '';
+                }
+            });
+
+            const totalAmountInput = document.getElementById('totalAmount');
+            const totalPeopleInput = document.getElementById('totalPeople');
+            const calcResultEl = document.getElementById('calcResult');
+
+            function calculateNbbang() {
+                const amount = parseFloat(totalAmountInput.value) || 0;
+                const people = parseInt(totalPeopleInput.value) || 0;
+                if (amount > 0 && people > 1) {
+                    calcResultEl.innerText = Math.floor(amount / people).toLocaleString();
+                } else {
+                    calcResultEl.innerText = '0';
+                }
+            }
+            totalAmountInput.addEventListener('input', calculateNbbang);
+            totalPeopleInput.addEventListener('input', calculateNbbang);
+
+            document.getElementById('generateBtn').addEventListener('click', () => {
+                const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                const targetUrl = baseUrl + 'MVP2.html';
+                navigator.clipboard.writeText(targetUrl).then(() => {
+                    alert('정산 및 독촉장 개설 완료! 정산 현황판 링크가 클립보드에 복사되었습니다. 🚀');
+                }).catch(err => {
+                    console.error('링크 복사 실패:', err);
+                    alert('링크 복사에 실패했습니다.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
