@@ -40,7 +40,11 @@
                     </svg>
                 </button>
             </div>
-            <button id="theme-toggle-button" class="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between rounded-lg">
+            <div class="space-y-2 mb-4">
+                <a href="index.html" class="block w-full text-center px-4 py-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl text-sm font-semibold transition border border-blue-200 dark:border-blue-900/50">엔빵형 랜딩페이지</a>
+                <a href="MVP.html" class="block w-full text-center px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold transition border border-gray-200 dark:border-gray-700">엔빵형 MVP</a>
+            </div>
+            <button id="theme-toggle-button" class="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700">
                 <span id="theme-toggle-text">다크 모드</span>
                 <svg id="theme-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"></svg>
             </button>
@@ -64,17 +68,23 @@
             <p id="error-message" class="text-red-500 text-xs mt-2 h-4"></p>
         </div>
 
+        <!-- 정산 시작하러 가기 버튼 -->
+        <div class="w-full">
+            <a href="MVP.html" class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 px-6 rounded-2xl transition duration-200 text-center shadow-lg shadow-blue-500/30 transform active:scale-[0.98] text-base">
+                정산 시작하러 가기
+            </a>
+        </div>
+
         <div class="bg-white dark:bg-[#161F30] p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl text-left space-y-4">
             <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 엔빵형 사전 예약
             </h2>
             <form id="waitlistForm" class="space-y-3">
-                <input type="text" id="name" placeholder="이름 또는 닉네임" required class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-gray-300 dark:border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition">
-                <input type="text" id="contact" placeholder="연락처 또는 이메일 주소" required class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-gray-300 dark:border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition">
+                <input type="text" id="name" placeholder="이름 또는 닉네임" required class="w-full bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition">
+                <input type="text" id="contact" placeholder="연락처 또는 이메일 주소" required class="w-full bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition">
                 <button type="submit" id="submit-button" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-500/30">
                     엔빵형 등판 대기하기
                 </button>
-                <p id="success-message" class="text-green-500 dark:text-green-400 text-center text-sm hidden">사전 예약 완료! 카운트를 확인하세요.</p>
             </form>
         </div>
     </main>
@@ -122,16 +132,15 @@
             // --- SUPABASE & FORM LOGIC ---
             const supabaseUrl = 'https://wyntbetmszlycqdxoyre.supabase.co';
             const supabaseKey = 'sb_publishable_d-Hfj1cYxJ8utFWzdsGUnA_WjV8kJEd';
-            const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+            const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
             const waitlistCountElement = document.getElementById('waitlist-count');
             const waitlistForm = document.getElementById('waitlistForm');
             const submitButton = document.getElementById('submit-button');
-            const successMessage = document.getElementById('success-message');
             const counterBadge = document.getElementById('counter-badge');
             const errorMessageElement = document.getElementById('error-message');
 
-            const baseCount = 120;
+            const baseCount = 0;
             let currentCount = 0;
 
             function showError(message) {
@@ -149,7 +158,7 @@
                 counterBadge.classList.add('animate-pulse');
                 errorMessageElement.innerText = '';
                 
-                const { count, error } = await supabase
+                const { count, error } = await supabaseClient
                     .from('waitlist')
                     .select('*', { count: 'exact', head: true });
 
@@ -172,7 +181,7 @@
                 submitButton.innerText = '등록 중...';
                 errorMessageElement.innerText = '';
 
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('waitlist')
                     .insert([{ name, contact }]);
 
@@ -182,12 +191,10 @@
                     submitButton.disabled = false;
                     submitButton.innerText = '엔빵형 등판 대기하기';
                 } else {
-                    successMessage.classList.remove('hidden');
                     submitButton.innerText = '예약 완료!';
                     updateCount(currentCount + 1);
                     waitlistForm.reset();
                     setTimeout(() => {
-                       successMessage.classList.add('hidden');
                        submitButton.disabled = true;
                     }, 3000);
                 }

@@ -44,7 +44,7 @@
                 </button>
             </div>
             <div class="space-y-2 mb-4">
-                <a href="index.html" class="block w-full text-center px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold transition border border-gray-200 dark:border-gray-700">엔빵형 홈</a>
+                <a href="index.html" class="block w-full text-center px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold transition border border-gray-200 dark:border-gray-700">엔빵형 랜딩페이지</a>
                 <a href="MVP.html" class="block w-full text-center px-4 py-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl text-sm font-semibold transition border border-blue-200 dark:border-blue-900/50">엔빵형 MVP</a>
             </div>
             <button id="theme-toggle-button" class="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700">
@@ -62,6 +62,11 @@
             <h2 class="text-lg font-black text-black dark:text-white uppercase tracking-wider">엔빵형 정산 현황판</h2>
             
             <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-300 mb-1.5 font-medium">방장 이름</label>
+                    <input type="text" id="ownerName" placeholder="예: 김방장"
+                        class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3.5 text-lg font-bold text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                </div>
                 <div>
                     <label class="block text-xs text-gray-500 dark:text-gray-300 mb-1.5 font-medium">총 지출 금액 (원)</label>
                     <input type="number" id="totalAmount" placeholder="예: 100000"
@@ -199,10 +204,24 @@
             totalPeopleInput.addEventListener('input', calculateNbbang);
 
             document.getElementById('generateBtn').addEventListener('click', () => {
+                const ownerName = document.getElementById('ownerName').value || '김방장';
+                const perAmount = document.getElementById('calcResult').innerText.replace(/,/g, '');
+                
+                // 은행 정보
+                const bankSelect = document.getElementById('bankName');
+                const bankDirect = document.getElementById('bankNameDirect');
+                const bankName = bankSelect.value === 'direct' ? bankDirect.value : bankSelect.value;
+                const accountNumber = document.getElementById('accountNumber').value;
+                
+                // 모드 정보
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                
                 const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                const targetUrl = baseUrl + 'MVP2.html';
+                const targetUrl = `${baseUrl}MVP2.html?owner=${encodeURIComponent(ownerName)}&amount=${encodeURIComponent(perAmount)}&bank=${encodeURIComponent(bankName)}&account=${encodeURIComponent(accountNumber)}&mode=${encodeURIComponent(mode)}`;
+                
                 navigator.clipboard.writeText(targetUrl).then(() => {
-                    alert('정산 및 독촉장 개설 완료! 정산 현황판 링크가 클립보드에 복사되었습니다. 🚀');
+                    const modeText = mode === 'hard' ? '매운맛 독촉' : '순한맛 알림';
+                    alert(`정산 및 ${modeText} 활성화 완료. 정산 현황판 링크가 클립보드에 복사되었습니다.`);
                 }).catch(err => {
                     console.error('링크 복사 실패:', err);
                     alert('링크 복사에 실패했습니다.');
