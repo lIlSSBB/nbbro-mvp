@@ -100,6 +100,31 @@
                     <input type="text" id="accountNumber" placeholder="계좌번호 입력"
                         class="w-full mt-2 bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
                 </div>
+                <div>
+                    <label class="block text-xs text-gray-500 dark:text-gray-300 mb-1.5 font-medium">정산 마감 기한 설정</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <div class="flex items-center bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 focus-within:border-blue-500 transition-colors duration-300">
+                            <input type="number" id="deadlineMonth" min="1" max="12" placeholder="월"
+                                class="w-full bg-transparent text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none text-center pr-1">
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">월</span>
+                        </div>
+                        <div class="flex items-center bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 focus-within:border-blue-500 transition-colors duration-300">
+                            <input type="number" id="deadlineDay" min="1" max="31" placeholder="일"
+                                class="w-full bg-transparent text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none text-center pr-1">
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">일</span>
+                        </div>
+                        <div class="flex items-center bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 focus-within:border-blue-500 transition-colors duration-300">
+                            <input type="number" id="deadlineHour" min="0" max="23" placeholder="시"
+                                class="w-full bg-transparent text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none text-center pr-1">
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">시</span>
+                        </div>
+                        <div class="flex items-center bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-3 py-3 focus-within:border-blue-500 transition-colors duration-300">
+                            <input type="number" id="deadlineMinute" min="0" max="59" placeholder="분"
+                                class="w-full bg-transparent text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none text-center pr-1">
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">분</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -203,6 +228,32 @@
             totalAmountInput.addEventListener('input', calculateNbbang);
             totalPeopleInput.addEventListener('input', calculateNbbang);
 
+            // 정산 마감 기한 초기값 및 유효성 검사 설정
+            const dlMInput = document.getElementById('deadlineMonth');
+            const dlDInput = document.getElementById('deadlineDay');
+            const dlHInput = document.getElementById('deadlineHour');
+            const dlMinInput = document.getElementById('deadlineMinute');
+
+            const now = new Date();
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            dlMInput.value = tomorrow.getMonth() + 1;
+            dlDInput.value = tomorrow.getDate();
+            dlHInput.value = tomorrow.getHours();
+            dlMinInput.value = tomorrow.getMinutes();
+
+            function clampInput(input, min, max) {
+                input.addEventListener('input', () => {
+                    let val = parseInt(input.value);
+                    if (isNaN(val)) return;
+                    if (val < min) input.value = min;
+                    if (val > max) input.value = max;
+                });
+            }
+            clampInput(dlMInput, 1, 12);
+            clampInput(dlDInput, 1, 31);
+            clampInput(dlHInput, 0, 23);
+            clampInput(dlMinInput, 0, 59);
+
             document.getElementById('generateBtn').addEventListener('click', () => {
                 const ownerName = document.getElementById('ownerName').value || '김방장';
                 const perAmount = document.getElementById('calcResult').innerText.replace(/,/g, '');
@@ -216,8 +267,17 @@
                 // 모드 정보
                 const mode = document.querySelector('input[name="mode"]:checked').value;
                 
+                // 마감 기한 정보
+                const dlM = dlMInput.value;
+                const dlD = dlDInput.value;
+                const dlH = dlHInput.value;
+                const dlMin = dlMinInput.value;
+                
                 const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                const targetUrl = `${baseUrl}MVP2.html?owner=${encodeURIComponent(ownerName)}&amount=${encodeURIComponent(perAmount)}&bank=${encodeURIComponent(bankName)}&account=${encodeURIComponent(accountNumber)}&mode=${encodeURIComponent(mode)}`;
+                let targetUrl = `${baseUrl}MVP2.html?owner=${encodeURIComponent(ownerName)}&amount=${encodeURIComponent(perAmount)}&bank=${encodeURIComponent(bankName)}&account=${encodeURIComponent(accountNumber)}&mode=${encodeURIComponent(mode)}`;
+                if (dlM && dlD) {
+                    targetUrl += `&dlM=${encodeURIComponent(dlM)}&dlD=${encodeURIComponent(dlD)}&dlH=${encodeURIComponent(dlH)}&dlMin=${encodeURIComponent(dlMin)}`;
+                }
                 
                 navigator.clipboard.writeText(targetUrl).then(() => {
                     const modeText = mode === 'hard' ? '매운맛 독촉' : '순한맛 알림';

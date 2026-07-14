@@ -67,6 +67,14 @@
                 <p class="text-3xl font-black text-gray-900 dark:text-white"><span id="perAmount">25,000</span> 원</p>
             </div>
 
+            <!-- 정산 마감 기한 표시 영역 -->
+            <div id="deadlineArea" class="hidden text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 py-2.5 px-4 rounded-xl inline-block mx-auto font-bold transition-colors duration-300">
+                정산 마감: <span id="deadlineText">7월 15일 18시 30분</span>까지
+                <div id="timerContainer" class="mt-1 text-base font-black">
+                    남은 시간: <span id="countdownTimer" class="tabular-nums">00:00:00</span>
+                </div>
+            </div>
+
             <!-- 계좌 복사 버튼 영역 -->
             <div
                 class="bg-gray-50 dark:bg-[#0B0F19] rounded-xl p-4 flex flex-col items-center justify-center gap-2">
@@ -90,7 +98,7 @@
                     현재 이 정산 링크는 <span class="text-gray-900 dark:text-white font-bold">"매운맛 독촉 모드"</span>가 활성화되어 있습니다.
                 </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                    미입금 시 <span class="text-gray-900 dark:text-white font-bold">내일 아침 08:00</span>부터 입금할 때까지 엔빵형의 정밀 타격 알림이 시작됩니다.
+                    미입금 시 <span class="text-gray-900 dark:text-white font-bold" id="warningDeadline">내일 아침 08:00</span>부터 입금할 때까지 엔빵형의 정밀 타격 알림이 시작됩니다.
                 </p>
             </div>
 
@@ -161,10 +169,59 @@
             const account = urlParams.get('account');
             const mode = urlParams.get('mode');
             
+            // 마감 기한 파라미터
+            const dlM = urlParams.get('dlM');
+            const dlD = urlParams.get('dlD');
+            const dlH = urlParams.get('dlH');
+            const dlMin = urlParams.get('dlMin');
+            
             if (owner) document.getElementById('ownerName').innerText = decodeURIComponent(owner);
             if (amount) document.getElementById('perAmount').innerText = parseInt(amount).toLocaleString();
             if (bank) document.getElementById('bankName').innerText = decodeURIComponent(bank);
             if (account) document.getElementById('accountNumber').innerText = decodeURIComponent(account);
+            
+            if (dlM && dlD) {
+                const hourStr = dlH ? `${dlH}시` : '0시';
+                const minStr = dlMin ? `${dlMin}분` : '0분';
+                const deadlineFull = `${dlM}월 ${dlD}일 ${hourStr} ${minStr}`;
+                
+                const deadlineArea = document.getElementById('deadlineArea');
+                const deadlineText = document.getElementById('deadlineText');
+                if (deadlineArea && deadlineText) {
+                    deadlineText.innerText = deadlineFull;
+                    deadlineArea.classList.remove('hidden');
+                }
+                
+                const warningDeadline = document.getElementById('warningDeadline');
+                if (warningDeadline) {
+                    warningDeadline.innerText = `마감 시간(${deadlineFull})`;
+                }
+
+                // 타이머 로직
+                const countdownTimer = document.getElementById('countdownTimer');
+                const now = new Date();
+                const deadlineDate = new Date(now.getFullYear(), dlM - 1, dlD, dlH || 0, dlMin || 0);
+                
+                function updateTimer() {
+                    const currentTime = new Date();
+                    const diff = deadlineDate - currentTime;
+                    
+                    if (diff <= 0) {
+                        countdownTimer.innerText = "00:00:00";
+                        clearInterval(timerInterval);
+                        return;
+                    }
+                    
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    countdownTimer.innerText = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }
+                
+                updateTimer();
+                const timerInterval = setInterval(updateTimer, 1000);
+            }
             
             if (mode === 'hard') {
                 document.querySelector('#warningSection p:first-of-type').innerHTML = '현재 이 정산 링크는 <span class="text-gray-900 dark:text-white font-bold">"매운맛 독촉 모드"</span>가 활성화되어 있습니다.';
