@@ -132,12 +132,26 @@
         <section class="bg-white dark:bg-[#161F30] p-6 rounded-2xl shadow-xl space-y-4 transition-colors duration-300">
             <h2 class="text-lg font-black text-black dark:text-white uppercase tracking-wider">미입금 빌런(타깃) 설정</h2>
             <div class="space-y-3">
-                <input type="text" id="villainName" placeholder="빌런 이름 또는 닉네임"
-                    class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
-                <input type="text" id="villainContact" placeholder="빌런 연락처 (예: 010-XXXX-XXXX)"
-                    class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                <div class="flex flex-col gap-2">
+                    <input type="text" id="villainNameInput" placeholder="빌런 이름"
+                        class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                    <input type="text" id="villainContactInput" placeholder="빌런 연락처 (예: 010-XXXX-XXXX)"
+                        class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3 text-xs text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                    <button id="addVillainBtn"
+                        class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-3 rounded-xl transition">
+                        + 추가
+                    </button>
+                </div>
 
-                <div class="grid grid-cols-2 gap-3 pt-1">
+                <!-- 추가된 빌런 명단 -->
+                <div class="space-y-2">
+                    <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">빌런 명단</h3>
+                    <div id="villainListContainer" class="space-y-2">
+                        <!-- Added villains will appear here -->
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <label class="flex items-center justify-center p-3 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 text-xs font-semibold cursor-pointer select-none">
                         <input type="radio" name="mode" value="soft" class="sr-only" checked> 순한맛 알림
                     </label>
@@ -254,6 +268,47 @@
             clampInput(dlHInput, 0, 23);
             clampInput(dlMinInput, 0, 59);
 
+            // 빌런 목록 관리
+            const villainList = [];
+            const villainNameInput = document.getElementById('villainNameInput');
+            const villainContactInput = document.getElementById('villainContactInput');
+            const addVillainBtn = document.getElementById('addVillainBtn');
+            const villainListContainer = document.getElementById('villainListContainer');
+
+            function renderVillainList() {
+                villainListContainer.innerHTML = '';
+                villainList.forEach((villain, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'flex justify-between items-center bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3';
+                    card.innerHTML = `
+                        <div class="text-xs">
+                            <span class="font-bold text-gray-950 dark:text-white">${villain.name}</span>
+                            <span class="text-gray-500 dark:text-gray-400">(${villain.contact})</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-red-500 font-bold" onclick="removeVillain(${index})">&times;</button>
+                    `;
+                    villainListContainer.appendChild(card);
+                });
+            }
+
+            window.removeVillain = (index) => {
+                villainList.splice(index, 1);
+                renderVillainList();
+            };
+
+            addVillainBtn.addEventListener('click', () => {
+                const name = villainNameInput.value.trim();
+                const contact = villainContactInput.value.trim();
+                if (name && contact) {
+                    villainList.push({ name, contact });
+                    villainNameInput.value = '';
+                    villainContactInput.value = '';
+                    renderVillainList();
+                } else {
+                    alert('이름과 연락처를 모두 입력해주세요.');
+                }
+            });
+
             document.getElementById('generateBtn').addEventListener('click', () => {
                 const ownerName = document.getElementById('ownerName').value || '김방장';
                 const perAmount = document.getElementById('calcResult').innerText.replace(/,/g, '');
@@ -266,6 +321,8 @@
                 
                 // 모드 정보
                 const mode = document.querySelector('input[name="mode"]:checked').value;
+                // 빌런 명단 JSON 문자열로 전달
+                const villains = JSON.stringify(villainList);
                 
                 // 마감 기한 정보
                 const dlM = dlMInput.value;
@@ -274,7 +331,7 @@
                 const dlMin = dlMinInput.value;
                 
                 const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                let targetUrl = `${baseUrl}MVP2.html?owner=${encodeURIComponent(ownerName)}&amount=${encodeURIComponent(perAmount)}&bank=${encodeURIComponent(bankName)}&account=${encodeURIComponent(accountNumber)}&mode=${encodeURIComponent(mode)}`;
+                let targetUrl = `${baseUrl}MVP2.html?owner=${encodeURIComponent(ownerName)}&amount=${encodeURIComponent(perAmount)}&bank=${encodeURIComponent(bankName)}&account=${encodeURIComponent(accountNumber)}&mode=${encodeURIComponent(mode)}&villains=${encodeURIComponent(villains)}`;
                 if (dlM && dlD) {
                     targetUrl += `&dlM=${encodeURIComponent(dlM)}&dlD=${encodeURIComponent(dlD)}&dlH=${encodeURIComponent(dlH)}&dlMin=${encodeURIComponent(dlMin)}`;
                 }

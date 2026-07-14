@@ -52,6 +52,15 @@
     <!-- 메인 컨테이너 -->
     <main class="max-w-md w-full space-y-6 mt-24">
         
+        <!-- [빌런 알림 섹션] -->
+        <section id="villainAnnouncement" class="hidden bg-red-600 p-6 rounded-2xl shadow-xl space-y-4 transition-colors duration-300">
+            <h2 class="text-white text-lg font-black uppercase tracking-widest text-center">미입금 빌런 명단</h2>
+            <div id="villainListDisplay" class="space-y-2">
+                <!-- Villain items will be added here -->
+            </div>
+            <p class="text-white/90 text-sm font-medium text-center pt-2 border-t border-red-500">지금 당장 입금하세요.</p>
+        </section>
+
         <!-- 엔빵형 현황판 섹션 -->
         <section class="flex items-center justify-between">
             <h1 class="text-xl font-black text-gray-900 dark:text-white">엔빵형 현황판</h1>
@@ -168,6 +177,7 @@
             const bank = urlParams.get('bank');
             const account = urlParams.get('account');
             const mode = urlParams.get('mode');
+            const villains = urlParams.get('villains');
             
             // 마감 기한 파라미터
             const dlM = urlParams.get('dlM');
@@ -179,6 +189,23 @@
             if (amount) document.getElementById('perAmount').innerText = parseInt(amount).toLocaleString();
             if (bank) document.getElementById('bankName').innerText = decodeURIComponent(bank);
             if (account) document.getElementById('accountNumber').innerText = decodeURIComponent(account);
+            
+            // 빌런 알림
+            if (mode === 'hard' && villains) {
+                const villainAnnouncement = document.getElementById('villainAnnouncement');
+                const villainListDisplay = document.getElementById('villainListDisplay');
+                
+                if (villainAnnouncement && villainListDisplay) {
+                    try {
+                        const parsedVillains = JSON.parse(decodeURIComponent(villains));
+                        const names = parsedVillains.map(v => v.name).join(', ');
+                        villainListDisplay.innerHTML = `<p class="text-white text-xl font-black text-center">${names}</p>`;
+                        villainAnnouncement.classList.remove('hidden');
+                    } catch (e) {
+                        console.error('빌런 파싱 오류', e);
+                    }
+                }
+            }
             
             if (dlM && dlD) {
                 const hourStr = dlH ? `${dlH}시` : '0시';
