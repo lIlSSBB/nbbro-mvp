@@ -162,9 +162,22 @@
             </div>
         </section>
 
+        <!-- [STEP 3] 정산 확인 요청 명단 -->
+        <section class="bg-white dark:bg-[#161F30] p-6 rounded-2xl shadow-xl space-y-4 transition-colors duration-300">
+            <h2 class="text-lg font-black text-black dark:text-white uppercase tracking-wider">정산 확인 요청 명단</h2>
+            <div id="requestListContainer" class="space-y-2">
+                <!-- 정산 확인 요청 목록이 여기에 나타납니다 -->
+            </div>
+        </section>
+
         <button id="generateBtn"
             class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition duration-200 transform active:scale-[0.98] text-sm shadow-lg shadow-blue-500/30">
             엔빵형 링크 생성
+        </button>
+
+        <button id="copyStatusLinkBtn"
+            class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-4 rounded-xl transition duration-200 text-sm">
+            현황판 링크 복사
         </button>
 
     </main>
@@ -238,6 +251,10 @@
                 } else {
                     calcResultEl.innerText = '0';
                 }
+                // nbbang 금액 계산 후 룸 컨텍스트 갱신
+                if (typeof updateRoomContext === 'function') {
+                    updateRoomContext();
+                }
             }
             totalAmountInput.addEventListener('input', calculateNbbang);
             totalPeopleInput.addEventListener('input', calculateNbbang);
@@ -268,22 +285,63 @@
             clampInput(dlHInput, 0, 23);
             clampInput(dlMinInput, 0, 59);
 
-            // 빌런 목록 관리
-            const villainList = [];
+            // 방 컨텍스트 및 상태 관리 (LocalStorage 연동)
+            let villainList = [];
+            let requestList = [];
+
             const villainNameInput = document.getElementById('villainNameInput');
             const villainContactInput = document.getElementById('villainContactInput');
             const addVillainBtn = document.getElementById('addVillainBtn');
             const villainListContainer = document.getElementById('villainListContainer');
+            const requestListContainer = document.getElementById('requestListContainer');
+
+            function getRoomId() {
+                const ownerName = document.getElementById('ownerName').value.trim() || '김방장';
+                const perAmount = document.getElementById('calcResult').innerText.replace(/,/g, '') || '0';
+                const bankSelect = document.getElementById('bankName');
+                const bankDirect = document.getElementById('bankNameDirect');
+                const bankName = bankSelect.value === 'direct' ? bankDirect.value.trim() : bankSelect.value;
+                const accountNumber = document.getElementById('accountNumber').value.trim();
+                
+                return `${ownerName}_${perAmount}_${bankName}_${accountNumber}`;
+            }
+
+            function updateRoomContext() {
+                const roomId = getRoomId();
+                
+                // 1. 빌런 목록 로드
+                const savedVillains = localStorage.getItem(`villains_${roomId}`);
+                if (savedVillains) {
+                    villainList = JSON.parse(savedVillains);
+                } else {
+                    villainList = [];
+                }
+                renderVillainList();
+                
+                // 2. 요청 목록 로드
+                const savedRequests = localStorage.getItem(`requests_${roomId}`);
+                if (savedRequests) {
+                    requestList = JSON.parse(savedRequests);
+                } else {
+                    requestList = [];
+                }
+                renderRequestList();
+            }
 
             function renderVillainList() {
                 villainListContainer.innerHTML = '';
+                if (villainList.length === 0) {
+                    villainListContainer.innerHTML = `<p class="text-xs text-gray-400 dark:text-gray-500 text-center py-2">등록된 빌런이 없습니다.</p>`;
+                    return;
+                }
                 villainList.forEach((villain, index) => {
                     const card = document.createElement('div');
                     card.className = 'flex justify-between items-center bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3';
+                    const contactText = villain.contact ? `<span class="text-gray-500 dark:text-gray-400">(${villain.contact})</span>` : '';
                     card.innerHTML = `
                         <div class="text-xs">
                             <span class="font-bold text-gray-950 dark:text-white">${villain.name}</span>
-                            <span class="text-gray-500 dark:text-gray-400">(${villain.contact})</span>
+                            ${contactText}
                         </div>
                         <button class="text-gray-400 hover:text-red-500 font-bold" onclick="removeVillain(${index})">&times;</button>
                     `;
@@ -291,23 +349,125 @@
                 });
             }
 
+            function renderRequestList() {
+                if (!requestListContainer) return;
+                requestListContainer.innerHTML = '';
+                if (requestList.length === 0) {
+                    requestListContainer.innerHTML = `<p class="text-xs text-gray-400 dark:text-gray-500 text-center py-2">대기 중인 요청이 없습니다.</p>`;
+                    return;
+                }
+                requestList.forEach((name, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'flex justify-between items-center bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3 border border-blue-100 dark:border-blue-900/30';
+                    card.innerHTML = `
+                        <div class="text-xs font-bold text-gray-950 dark:text-white">
+                            ${name}
+                        </div>
+                        <button class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition" onclick="approveRequest(${index})">
+                            승인
+                        </button>
+                    `;
+                    requestListContainer.appendChild(card);
+                });
+            }
+
             window.removeVillain = (index) => {
                 villainList.splice(index, 1);
+                const roomId = getRoomId();
+                localStorage.setItem(`villains_${roomId}`, JSON.stringify(villainList));
                 renderVillainList();
+            };
+
+            window.approveRequest = (index) => {
+                const approvedName = requestList[index];
+                const roomId = getRoomId();
+                
+                // 1. 요청 목록에서 제거
+                requestList.splice(index, 1);
+                localStorage.setItem(`requests_${roomId}`, JSON.stringify(requestList));
+                
+                // 2. 빌런 목록에서도 제거
+                const villainIndex = villainList.findIndex(v => v.name === approvedName);
+                if (villainIndex !== -1) {
+                    villainList.splice(villainIndex, 1);
+                    localStorage.setItem(`villains_${roomId}`, JSON.stringify(villainList));
+                }
+                
+                // 3. UI 업데이트
+                updateRoomContext();
+                alert(`'${approvedName}' 님의 정산 요청을 승인했습니다. 빌런 명단에서도 제거되었습니다.`);
             };
 
             addVillainBtn.addEventListener('click', () => {
                 const name = villainNameInput.value.trim();
                 const contact = villainContactInput.value.trim();
-                if (name && contact) {
-                    villainList.push({ name, contact });
+                if (name) {
+                    villainList.push({ name, contact: contact || '' });
+                    const roomId = getRoomId();
+                    localStorage.setItem(`villains_${roomId}`, JSON.stringify(villainList));
                     villainNameInput.value = '';
                     villainContactInput.value = '';
                     renderVillainList();
                 } else {
-                    alert('이름과 연락처를 모두 입력해주세요.');
+                    alert('빌런 이름을 입력해주세요.');
                 }
             });
+
+            // 입력값 변경 시 룸 컨텍스트 실시간 업데이트
+            const inputs = ['ownerName', 'totalAmount', 'totalPeople', 'bankName', 'bankNameDirect', 'accountNumber'];
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', updateRoomContext);
+                    el.addEventListener('change', updateRoomContext);
+                }
+            });
+
+            // storage 이벤트 감지로 다른 탭의 변경 사항 실시간 반영
+            window.addEventListener('storage', (e) => {
+                const roomId = getRoomId();
+                if (e.key === `requests_${roomId}` || e.key === `villains_${roomId}`) {
+                    updateRoomContext();
+                }
+            });
+
+            // 초기 로드 시 룸 컨텍스트 로드
+            updateRoomContext();
+
+            // URL 파라미터가 있다면 폼 채우기
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('owner')) {
+                document.getElementById('ownerName').value = decodeURIComponent(urlParams.get('owner'));
+                document.getElementById('totalAmount').value = decodeURIComponent(urlParams.get('amount'));
+                document.getElementById('totalPeople').value = decodeURIComponent(urlParams.get('people'));
+                
+                const bank = decodeURIComponent(urlParams.get('bank'));
+                const bankSelect = document.getElementById('bankName');
+                const bankDirect = document.getElementById('bankNameDirect');
+                if (['토스뱅크', '카카오뱅크', '신한', '국민'].includes(bank)) {
+                    bankSelect.value = bank;
+                } else if (bank) {
+                    bankSelect.value = 'direct';
+                    bankDirect.value = bank;
+                    bankDirect.classList.remove('hidden');
+                }
+                document.getElementById('accountNumber').value = decodeURIComponent(urlParams.get('account'));
+                
+                const mode = urlParams.get('mode');
+                if (mode) {
+                    document.querySelector(`input[name="mode"][value="${mode}"]`).checked = true;
+                }
+
+                if (urlParams.has('dlM')) {
+                    document.getElementById('deadlineMonth').value = urlParams.get('dlM');
+                    document.getElementById('deadlineDay').value = urlParams.get('dlD');
+                    document.getElementById('deadlineHour').value = urlParams.get('dlH');
+                    document.getElementById('deadlineMinute').value = urlParams.get('dlMin');
+                }
+
+                calculateNbbang();
+                updateRoomContext();
+            }
 
             document.getElementById('generateBtn').addEventListener('click', () => {
                 const ownerName = document.getElementById('ownerName').value || '김방장';
@@ -339,6 +499,38 @@
                 navigator.clipboard.writeText(targetUrl).then(() => {
                     const modeText = mode === 'hard' ? '매운맛 독촉' : '순한맛 알림';
                     alert(`정산 및 ${modeText} 활성화 완료. 정산 현황판 링크가 클립보드에 복사되었습니다.`);
+                }).catch(err => {
+                    console.error('링크 복사 실패:', err);
+                    alert('링크 복사에 실패했습니다.');
+                });
+            });
+
+            document.getElementById('copyStatusLinkBtn').addEventListener('click', () => {
+                const ownerName = document.getElementById('ownerName').value || '김방장';
+                const totalAmount = document.getElementById('totalAmount').value || '0';
+                const totalPeople = document.getElementById('totalPeople').value || '0';
+                
+                const bankSelect = document.getElementById('bankName');
+                const bankDirect = document.getElementById('bankNameDirect');
+                const bankName = bankSelect.value === 'direct' ? bankDirect.value : bankSelect.value;
+                const accountNumber = document.getElementById('accountNumber').value;
+                
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                const villains = JSON.stringify(villainList);
+                
+                const dlM = dlMInput.value;
+                const dlD = dlDInput.value;
+                const dlH = dlHInput.value;
+                const dlMin = dlMinInput.value;
+                
+                const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                let targetUrl = `${baseUrl}MVP.html?owner=${encodeURIComponent(ownerName)}&amount=${encodeURIComponent(totalAmount)}&people=${encodeURIComponent(totalPeople)}&bank=${encodeURIComponent(bankName)}&account=${encodeURIComponent(accountNumber)}&mode=${encodeURIComponent(mode)}&villains=${encodeURIComponent(villains)}`;
+                if (dlM && dlD) {
+                    targetUrl += `&dlM=${encodeURIComponent(dlM)}&dlD=${encodeURIComponent(dlD)}&dlH=${encodeURIComponent(dlH)}&dlMin=${encodeURIComponent(dlMin)}`;
+                }
+
+                navigator.clipboard.writeText(targetUrl).then(() => {
+                    alert('현재 설정이 포함된 현황판 설정 페이지 링크가 복사되었습니다.');
                 }).catch(err => {
                     console.error('링크 복사 실패:', err);
                     alert('링크 복사에 실패했습니다.');

@@ -96,6 +96,20 @@
             </div>
         </section>
 
+        <!-- [정산 확인 요청 카드] -->
+        <section class="bg-white dark:bg-[#161F30] p-6 rounded-2xl shadow-xl space-y-4 transition-colors duration-300">
+            <h3 class="text-sm font-black tracking-wide uppercase text-gray-900 dark:text-white">정산 완료 확인 요청</h3>
+            <div class="space-y-3">
+                <input type="text" id="requesterNameInput" placeholder="내 이름 입력 (예: 홍길동)"
+                    class="w-full bg-gray-50 dark:bg-[#0B0F19] border border-transparent rounded-xl px-4 py-3.5 text-sm font-bold text-gray-950 dark:text-white placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors duration-300">
+                <button id="requestSettlementBtn"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition duration-200 transform active:scale-[0.98] text-sm shadow-md">
+                    정산 확인 요청하기
+                </button>
+            </div>
+            <p id="requestStatusText" class="hidden text-xs text-center text-blue-600 dark:text-blue-400 font-semibold"></p>
+        </section>
+
         <!-- [하단 카드] 엔빵형의 독촉 경고 스케줄러 상태창 -->
         <section id="warningSection" class="bg-white dark:bg-[#161F30] p-6 rounded-2xl shadow-xl space-y-4 transition-colors duration-300">
             <div class="flex items-center gap-2 text-gray-900 dark:text-white">
@@ -172,10 +186,10 @@
 
             // URL 파라미터 반영
             const urlParams = new URLSearchParams(window.location.search);
-            const owner = urlParams.get('owner');
-            const amount = urlParams.get('amount');
-            const bank = urlParams.get('bank');
-            const account = urlParams.get('account');
+            const owner = urlParams.get('owner') || '김방장';
+            const amount = urlParams.get('amount') || '0';
+            const bank = urlParams.get('bank') || '';
+            const account = urlParams.get('account') || '';
             const mode = urlParams.get('mode');
             const villains = urlParams.get('villains');
             
@@ -189,23 +203,122 @@
             if (amount) document.getElementById('perAmount').innerText = parseInt(amount).toLocaleString();
             if (bank) document.getElementById('bankName').innerText = decodeURIComponent(bank);
             if (account) document.getElementById('accountNumber').innerText = decodeURIComponent(account);
-            
-            // 빌런 알림
-            if (mode === 'hard' && villains) {
+
+            // 고유 룸 ID 정의
+            const roomId = `${decodeURIComponent(owner)}_${amount.replace(/,/g, '')}_${decodeURIComponent(bank)}_${decodeURIComponent(account)}`;
+
+            // 빌런 데이터 초기화 및 렌더링 함수
+            function renderVillains() {
                 const villainAnnouncement = document.getElementById('villainAnnouncement');
                 const villainListDisplay = document.getElementById('villainListDisplay');
                 
-                if (villainAnnouncement && villainListDisplay) {
+                if (!villainAnnouncement || !villainListDisplay) return;
+                
+                let currentVillains = [];
+                const savedVillains = localStorage.getItem(`villains_${roomId}`);
+                
+                if (savedVillains !== null) {
+                    currentVillains = JSON.parse(savedVillains);
+                } else if (villains) {
                     try {
-                        const parsedVillains = JSON.parse(decodeURIComponent(villains));
-                        const names = parsedVillains.map(v => v.name).join(', ');
-                        villainListDisplay.innerHTML = `<p class="text-white text-xl font-black text-center">${names}</p>`;
-                        villainAnnouncement.classList.remove('hidden');
+                        currentVillains = JSON.parse(decodeURIComponent(villains));
+                        localStorage.setItem(`villains_${roomId}`, JSON.stringify(currentVillains));
                     } catch (e) {
                         console.error('빌런 파싱 오류', e);
                     }
                 }
+                
+                if (mode === 'hard' && currentVillains.length > 0) {
+                    const names = currentVillains.map(v => v.name).join(', ');
+                    villainListDisplay.innerHTML = `<p class="text-white text-xl font-black text-center">${names}</p>`;
+                    villainAnnouncement.classList.remove('hidden');
+                } else {
+                    villainAnnouncement.classList.add('hidden');
+                }
             }
+
+            // 정산 확인 요청 상태 업데이트 및 UI 처리
+            function updateRequestStatus() {
+                const requesterNameInput = document.getElementById('requesterNameInput');
+                const requestSettlementBtn = document.getElementById('requestSettlementBtn');
+                const requestStatusText = document.getElementById('requestStatusText');
+                
+                if (!requesterNameInput || !requestSettlementBtn || !requestStatusText) return;
+                
+                const savedRequests = localStorage.getItem(`requests_${roomId}`);
+                const requests = savedRequests ? JSON.parse(savedRequests) : [];
+                
+                const sentName = sessionStorage.getItem(`my_request_sent_${roomId}`);
+                
+                if (sentName) {
+                    if (requests.includes(sentName)) {
+                        requestStatusText.innerText = `'${sentName}' 님의 정산 확인 요청이 대기 중입니다.`;
+                        requestStatusText.className = "text-xs text-center text-blue-600 dark:text-blue-400 font-semibold";
+                        requestStatusText.classList.remove('hidden');
+                        requestSettlementBtn.disabled = true;
+                        requestSettlementBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                        requesterNameInput.disabled = true;
+                    } else {
+                        // 대기 중인 요청에 없는데 보낸 적이 있으면 -> 승인된 것!
+                        requestStatusText.innerText = `'${sentName}' 님의 정산 확인이 승인되었습니다.`;
+                        requestStatusText.className = "text-xs text-center text-green-600 dark:text-green-400 font-semibold";
+                        requestStatusText.classList.remove('hidden');
+                        requestSettlementBtn.disabled = false;
+                        requestSettlementBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        requesterNameInput.disabled = false;
+                        requesterNameInput.value = '';
+                        sessionStorage.removeItem(`my_request_sent_${roomId}`);
+                    }
+                } else {
+                    requestStatusText.classList.add('hidden');
+                    requestSettlementBtn.disabled = false;
+                    requestSettlementBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    requesterNameInput.disabled = false;
+                }
+            }
+
+            // 요청 버튼 클릭 핸들러
+            const requestSettlementBtn = document.getElementById('requestSettlementBtn');
+            const requesterNameInput = document.getElementById('requesterNameInput');
+            
+            if (requestSettlementBtn && requesterNameInput) {
+                requestSettlementBtn.addEventListener('click', () => {
+                    const name = requesterNameInput.value.trim();
+                    if (!name) {
+                        alert('이름을 입력해주세요.');
+                        return;
+                    }
+                    
+                    const savedRequests = localStorage.getItem(`requests_${roomId}`);
+                    const requests = savedRequests ? JSON.parse(savedRequests) : [];
+                    
+                    if (requests.includes(name)) {
+                        alert('이미 동일한 이름으로 정산 확인 요청이 대기 중입니다.');
+                        return;
+                    }
+                    
+                    requests.push(name);
+                    localStorage.setItem(`requests_${roomId}`, JSON.stringify(requests));
+                    sessionStorage.setItem(`my_request_sent_${roomId}`, name);
+                    
+                    updateRequestStatus();
+                    alert(`'${name}' 님, 정산 확인 요청을 보냈습니다. 방장의 승인을 기다려주세요.`);
+                });
+            }
+
+            // 실시간 동기화 storage 이벤트 감지
+            window.addEventListener('storage', (e) => {
+                if (e.key === `villains_${roomId}`) {
+                    renderVillains();
+                }
+                if (e.key === `requests_${roomId}`) {
+                    updateRequestStatus();
+                }
+            });
+
+            // 초기 렌더링 및 상태 업데이트
+            renderVillains();
+            updateRequestStatus();
             
             if (dlM && dlD) {
                 const hourStr = dlH ? `${dlH}시` : '0시';
