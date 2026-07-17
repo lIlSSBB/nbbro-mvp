@@ -460,8 +460,9 @@
                 
                 // 2. 빌런 목록에서도 제거
                 const villainIndex = villainList.findIndex(v => v.name === approvedName);
-                console.log('DEBUG_MVP_APPROVAL_ROOMID:', { roomId, approvedName, villainIndex, villainList });
-                if (villainIndex !== -1) {
+                const wasVillain = villainIndex !== -1;
+                console.log('DEBUG_MVP_APPROVAL_ROOMID:', { roomId, approvedName, villainIndex, villainList, wasVillain });
+                if (wasVillain) {
                     villainList.splice(villainIndex, 1);
                     localStorage.setItem(`villains_${roomId}`, JSON.stringify(villainList));
                 }
@@ -469,7 +470,12 @@
                 // 3. UI 업데이트 및 모달 닫기
                 updateRoomContext();
                 closeDepositConfirmModal();
-                alert(`'${approvedName}' 님의 정산 요청을 승인했습니다. 빌런 명단에서도 제거되었습니다.`);
+                
+                let message = `'${approvedName}' 님의 정산 요청을 승인했습니다.`;
+                if (wasVillain) {
+                    message += ' 빌런 명단에서도 제거되었습니다.';
+                }
+                alert(message);
             });
 
             // 모달 내 '거절' 버튼 클릭 시
