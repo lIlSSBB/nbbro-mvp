@@ -47,7 +47,21 @@
                 <a href="index.html" class="block w-full text-center px-4 py-2.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold transition border border-gray-200 dark:border-gray-700">엔빵형 랜딩페이지</a>
                 <a href="MVP.html" class="block w-full text-center px-4 py-2.5 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl text-sm font-semibold transition border border-blue-200 dark:border-blue-900/50">엔빵형 MVP</a>
             </div>
-            <button id="theme-toggle-button" class="w-full text-left px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700">
+
+            <!-- 관리자 설정 패널 -->
+            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h4 class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-3">관리자 설정</h4>
+                <div id="admin-auth-section" class="space-y-2">
+                    <input type="password" id="admin-password" placeholder="관리자 비밀번호" class="w-full px-4 py-2 text-sm border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <button id="admin-login-btn" class="w-full bg-gray-800 text-white text-xs font-bold py-2 rounded-xl transition">인증하기</button>
+                </div>
+                <div id="admin-controls-section" class="hidden space-y-2">
+                    <button id="toggle-approval-btn" class="w-full bg-green-600 text-white text-xs font-bold py-2 rounded-xl transition">승인 기능 켜기</button>
+                    <button id="admin-logout-btn" class="w-full bg-gray-500 text-white text-xs font-bold py-2 rounded-xl transition">관리자 로그아웃</button>
+                </div>
+            </div>
+
+            <button id="theme-toggle-button" class="w-full mt-4 text-left px-4 py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between rounded-lg border border-gray-100 dark:border-gray-700">
                 <span id="theme-toggle-text">다크 모드</span>
                 <svg id="theme-icon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"></svg>
             </button>
@@ -78,7 +92,7 @@
                     <button id="confirm-reject-btn" class="w-1/2 bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/60 font-bold py-3.5 rounded-xl transition text-sm">
                         거절
                     </button>
-                    <button id="confirm-approve-btn" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition text-sm shadow-md shadow-blue-500/25">
+                    <button id="confirm-approve-btn" class="hidden w-1/2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition text-sm shadow-md shadow-blue-500/25">
                         승인
                     </button>
                 </div>
@@ -388,6 +402,7 @@
                     requestListContainer.innerHTML = `<p class="text-xs text-gray-400 dark:text-gray-500 text-center py-2">대기 중인 요청이 없습니다.</p>`;
                     return;
                 }
+                const isApprovalEnabled = localStorage.getItem('isApprovalEnabled') === 'true';
                 requestList.forEach((name, index) => {
                     const card = document.createElement('div');
                     card.className = 'flex justify-between items-center bg-[#F4F4F4] dark:bg-[#0B0F19] rounded-xl px-4 py-3';
@@ -395,7 +410,7 @@
                         <div class="text-xs font-bold text-gray-950 dark:text-white">
                             ${name}
                         </div>
-                        <button class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition" onclick="approveRequest(${index})">
+                        <button class="${isApprovalEnabled ? '' : 'hidden'} bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition" onclick="approveRequest(${index})">
                             승인
                         </button>
                     `;
@@ -466,8 +481,16 @@
                     villainList.splice(villainIndex, 1);
                     localStorage.setItem(`villains_${roomId}`, JSON.stringify(villainList));
                 }
+
+                // 3. 거절 목록에서도 제거
+                const rejectedList = JSON.parse(localStorage.getItem(`rejected_${roomId}`) || '[]');
+                const rejectedIndex = rejectedList.indexOf(approvedName);
+                if (rejectedIndex !== -1) {
+                    rejectedList.splice(rejectedIndex, 1);
+                    localStorage.setItem(`rejected_${roomId}`, JSON.stringify(rejectedList));
+                }
                 
-                // 3. UI 업데이트 및 모달 닫기
+                // 4. UI 업데이트 및 모달 닫기
                 updateRoomContext();
                 closeDepositConfirmModal();
                 
@@ -492,7 +515,12 @@
                     localStorage.setItem(`requests_${roomId}`, JSON.stringify(requestList));
                 }
                 
-                // 2. 빌런 목록에는 유지 (미입금 상태)
+                // 2. 거절 목록에 추가 (미입금 상태로 인식)
+                const rejectedList = JSON.parse(localStorage.getItem(`rejected_${roomId}`) || '[]');
+                if (!rejectedList.includes(rejectedName)) {
+                    rejectedList.push(rejectedName);
+                    localStorage.setItem(`rejected_${roomId}`, JSON.stringify(rejectedList));
+                }
                 
                 // 3. UI 업데이트 및 모달 닫기
                 updateRoomContext();
@@ -515,15 +543,54 @@
                 }
             });
 
-            // 입력값 변경 시 룸 컨텍스트 실시간 업데이트
-            const inputs = ['ownerName', 'totalAmount', 'totalPeople', 'bankName', 'bankNameDirect', 'accountNumber'];
-            inputs.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('input', updateRoomContext);
-                    el.addEventListener('change', updateRoomContext);
+            // 관리자 인증 및 승인 기능 토글 로직
+            const adminPasswordInput = document.getElementById('admin-password');
+            const adminLoginBtn = document.getElementById('admin-login-btn');
+            const adminAuthSection = document.getElementById('admin-auth-section');
+            const adminControlsSection = document.getElementById('admin-controls-section');
+            const toggleApprovalBtn = document.getElementById('toggle-approval-btn');
+            
+            let isApprovalEnabled = localStorage.getItem('isApprovalEnabled') === 'true';
+            
+            function updateApprovalUI() {
+                toggleApprovalBtn.innerText = isApprovalEnabled ? '승인 기능 끄기' : '승인 기능 켜기';
+                toggleApprovalBtn.className = `w-full ${isApprovalEnabled ? 'bg-red-600' : 'bg-green-600'} text-white text-xs font-bold py-2 rounded-xl transition`;
+                
+                // 버튼들 업데이트
+                document.querySelectorAll('button[onclick^="approveRequest"]').forEach(btn => {
+                    if (isApprovalEnabled) btn.classList.remove('hidden');
+                    else btn.classList.add('hidden');
+                });
+                const confirmApproveBtn = document.getElementById('confirm-approve-btn');
+                if (isApprovalEnabled) confirmApproveBtn.classList.remove('hidden');
+                else confirmApproveBtn.classList.add('hidden');
+            }
+
+            adminLoginBtn.addEventListener('click', () => {
+                if (adminPasswordInput.value === '4118') {
+                    adminAuthSection.classList.add('hidden');
+                    adminControlsSection.classList.remove('hidden');
+                    updateApprovalUI();
+                } else {
+                    alert('비밀번호가 틀렸습니다.');
                 }
             });
+
+            document.getElementById('admin-logout-btn').addEventListener('click', () => {
+                adminAuthSection.classList.remove('hidden');
+                adminControlsSection.classList.add('hidden');
+                adminPasswordInput.value = '';
+                alert('관리자 모드에서 로그아웃되었습니다.');
+            });
+
+            toggleApprovalBtn.addEventListener('click', () => {
+                isApprovalEnabled = !isApprovalEnabled;
+                localStorage.setItem('isApprovalEnabled', isApprovalEnabled);
+                updateApprovalUI();
+            });
+
+            // 초기 UI 상태 적용
+            updateApprovalUI();
 
             // storage 이벤트 감지로 다른 탭의 변경 사항 실시간 반영
             window.addEventListener('storage', (e) => {
