@@ -206,6 +206,7 @@
 
             // 고유 룸 ID 정의
             const roomId = `${decodeURIComponent(owner)}_${amount.replace(/,/g, '')}_${decodeURIComponent(bank)}_${decodeURIComponent(account)}`;
+            console.log('DEBUG_ROOM_ID:', { owner, amount, bank, account, roomId });
 
             // 빌런 데이터 초기화 및 렌더링 함수
             function renderVillains() {
@@ -250,30 +251,55 @@
                 
                 const sentName = sessionStorage.getItem(`my_request_sent_${roomId}`);
                 
-                if (sentName) {
-                    if (requests.includes(sentName)) {
-                        requestStatusText.innerText = `'${sentName}' 님의 정산 확인 요청이 대기 중입니다.`;
-                        requestStatusText.className = "text-xs text-center text-blue-600 dark:text-blue-400 font-semibold";
-                        requestStatusText.classList.remove('hidden');
-                        requestSettlementBtn.disabled = true;
-                        requestSettlementBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                        requesterNameInput.disabled = true;
-                    } else {
-                        // 대기 중인 요청에 없는데 보낸 적이 있으면 -> 승인된 것!
-                        requestStatusText.innerText = `'${sentName}' 님의 정산 확인이 승인되었습니다.`;
-                        requestStatusText.className = "text-xs text-center text-green-600 dark:text-green-400 font-semibold";
-                        requestStatusText.classList.remove('hidden');
-                        requestSettlementBtn.disabled = false;
-                        requestSettlementBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                        requesterNameInput.disabled = false;
-                        requesterNameInput.value = '';
-                        sessionStorage.removeItem(`my_request_sent_${roomId}`);
-                    }
-                } else {
+                // 해당 이름의 정산 요청이 빌런 명단에 있는지 확인 (거절 여부 판단)
+                const savedVillains = localStorage.getItem(`villains_${roomId}`);
+                const villains = savedVillains ? JSON.parse(savedVillains) : [];
+                
+                // 정산 요청이 '대기 중'인지 확인
+                const isPending = requests.includes(sentName);
+                
+                // 빌런 명단에 이름이 남아있다면 '거절' 상태로 간주
+                const isRejected = sentName && !isPending && villains.some(v => v.name === sentName);
+
+                console.log('DEBUG_VILLAIN_CHECK:', { sentName, isPending, villains, isRejected });
+                
+                if (!sentName) {
                     requestStatusText.classList.add('hidden');
                     requestSettlementBtn.disabled = false;
                     requestSettlementBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                     requesterNameInput.disabled = false;
+                    requesterNameInput.value = '';
+                    return;
+                }
+
+                if (isPending) {
+                    requestStatusText.innerText = `'${sentName}' 님의 정산 확인 요청이 대기 중입니다.`;
+                    requestStatusText.className = "text-xs text-center text-blue-600 dark:text-blue-400 font-semibold";
+                    requestStatusText.classList.remove('hidden');
+                    requestSettlementBtn.disabled = true;
+                    requestSettlementBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    requesterNameInput.disabled = true;
+                } else if (isRejected) {
+                    requestStatusText.innerText = `'${sentName}' 님의 정산 확인이 거절되었습니다. 제대로 입금해주세요.`;
+                    requestStatusText.className = "text-xs text-center text-red-600 dark:text-red-400 font-semibold";
+                    requestStatusText.classList.remove('hidden');
+                    requestSettlementBtn.disabled = false;
+                    requestSettlementBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    requesterNameInput.disabled = false;
+                    requesterNameInput.value = '';
+                    sessionStorage.removeItem(`my_request_sent_${roomId}`);
+                } else {
+                    // 대기 중도 아니고 거절도 아니면 -> 승인된 것!
+                    requestStatusText.innerText = `'${sentName}' 님의 정산 확인이 승인되었습니다.`;
+                    requestStatusText.className = "text-xs text-center text-green-600 dark:text-green-400 font-semibold";
+                    requestStatusText.classList.remove('hidden');
+                    requestSettlementBtn.disabled = false;
+                    requestSettlementBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    requesterNameInput.disabled = false;
+                    requesterNameInput.value = '';
+                    
+                    // 세션에서 요청 정보 삭제 (승인 확인됨)
+                    sessionStorage.removeItem(`my_request_sent_${roomId}`);
                 }
             }
 
@@ -308,8 +334,10 @@
 
             // 실시간 동기화 storage 이벤트 감지
             window.addEventListener('storage', (e) => {
+                console.log('DEBUG: storage event detected', e.key);
                 if (e.key === `villains_${roomId}`) {
                     renderVillains();
+                    updateRequestStatus();
                 }
                 if (e.key === `requests_${roomId}`) {
                     updateRequestStatus();

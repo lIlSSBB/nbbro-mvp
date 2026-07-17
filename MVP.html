@@ -54,6 +54,38 @@
         </div>
     </div>
 
+    <!-- 입금 확인 팝업 모달 -->
+    <div id="deposit-confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white dark:bg-[#161F30] rounded-2xl shadow-2xl w-11/12 max-w-sm p-6 text-center relative border border-gray-100 dark:border-gray-800">
+            <!-- 닫기 버튼 -->
+            <button id="close-deposit-modal" class="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="space-y-4">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-black text-gray-900 dark:text-white">입금 확인</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                    <span id="confirm-target-name" class="font-black text-gray-600 dark:text-gray-300 text-sm"></span>님의 송금이<br>
+                    실제로 입금되었나요?
+                </p>
+                <div class="flex gap-3 pt-2">
+                    <button id="confirm-reject-btn" class="w-1/2 bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/60 font-bold py-3.5 rounded-xl transition text-sm">
+                        거절
+                    </button>
+                    <button id="confirm-approve-btn" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition text-sm shadow-md shadow-blue-500/25">
+                        승인
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 메인 컨테이너 -->
     <main class="max-w-md w-full space-y-8">
 
@@ -336,7 +368,7 @@
                 }
                 villainList.forEach((villain, index) => {
                     const card = document.createElement('div');
-                    card.className = 'flex justify-between items-center bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3';
+                    card.className = 'flex justify-between items-center bg-[#F4F4F4] dark:bg-[#0B0F19] rounded-xl px-4 py-3';
                     const contactText = villain.contact ? `<span class="text-gray-500 dark:text-gray-400">(${villain.contact})</span>` : '';
                     card.innerHTML = `
                         <div class="text-xs">
@@ -358,7 +390,7 @@
                 }
                 requestList.forEach((name, index) => {
                     const card = document.createElement('div');
-                    card.className = 'flex justify-between items-center bg-gray-50 dark:bg-[#0B0F19] rounded-xl px-4 py-3 border border-blue-100 dark:border-blue-900/30';
+                    card.className = 'flex justify-between items-center bg-[#F4F4F4] dark:bg-[#0B0F19] rounded-xl px-4 py-3';
                     card.innerHTML = `
                         <div class="text-xs font-bold text-gray-950 dark:text-white">
                             ${name}
@@ -378,25 +410,89 @@
                 renderVillainList();
             };
 
+            // 입금 확인 모달 엘리먼트 및 처리 변수
+            const depositConfirmModal = document.getElementById('deposit-confirm-modal');
+            const confirmTargetName = document.getElementById('confirm-target-name');
+            const confirmApproveBtn = document.getElementById('confirm-approve-btn');
+            const confirmRejectBtn = document.getElementById('confirm-reject-btn');
+            const closeDepositModalBtn = document.getElementById('close-deposit-modal');
+            let pendingRequestName = null;
+
             window.approveRequest = (index) => {
-                const approvedName = requestList[index];
+                const targetName = requestList[index];
+                if (!targetName) return;
+                
+                pendingRequestName = targetName;
+                confirmTargetName.innerText = targetName;
+                depositConfirmModal.classList.remove('hidden');
+            };
+
+            function closeDepositConfirmModal() {
+                depositConfirmModal.classList.add('hidden');
+                pendingRequestName = null;
+            }
+
+            closeDepositModalBtn.addEventListener('click', closeDepositConfirmModal);
+            depositConfirmModal.addEventListener('click', (e) => {
+                if (e.target === depositConfirmModal) {
+                    closeDepositConfirmModal();
+                }
+            });
+
+            // 모달 내 '승인' 버튼 클릭 시
+            confirmApproveBtn.addEventListener('click', () => {
+                console.log('DEBUG: confirmApproveBtn clicked');
+                if (!pendingRequestName) {
+                    console.log('DEBUG: no pendingRequestName');
+                    return;
+                }
+                
+                const approvedName = pendingRequestName;
                 const roomId = getRoomId();
+                console.log('DEBUG: Approving', approvedName, 'in room', roomId);
                 
                 // 1. 요청 목록에서 제거
-                requestList.splice(index, 1);
-                localStorage.setItem(`requests_${roomId}`, JSON.stringify(requestList));
+                const requestIndex = requestList.indexOf(approvedName);
+                if (requestIndex !== -1) {
+                    requestList.splice(requestIndex, 1);
+                    localStorage.setItem(`requests_${roomId}`, JSON.stringify(requestList));
+                }
                 
                 // 2. 빌런 목록에서도 제거
                 const villainIndex = villainList.findIndex(v => v.name === approvedName);
+                console.log('DEBUG_MVP_APPROVAL_ROOMID:', { roomId, approvedName, villainIndex, villainList });
                 if (villainIndex !== -1) {
                     villainList.splice(villainIndex, 1);
                     localStorage.setItem(`villains_${roomId}`, JSON.stringify(villainList));
                 }
                 
-                // 3. UI 업데이트
+                // 3. UI 업데이트 및 모달 닫기
                 updateRoomContext();
+                closeDepositConfirmModal();
                 alert(`'${approvedName}' 님의 정산 요청을 승인했습니다. 빌런 명단에서도 제거되었습니다.`);
-            };
+            });
+
+            // 모달 내 '거절' 버튼 클릭 시
+            confirmRejectBtn.addEventListener('click', () => {
+                if (!pendingRequestName) return;
+                
+                const rejectedName = pendingRequestName;
+                const roomId = getRoomId();
+                
+                // 1. 요청 목록에서만 제거 (요청 거절)
+                const requestIndex = requestList.indexOf(rejectedName);
+                if (requestIndex !== -1) {
+                    requestList.splice(requestIndex, 1);
+                    localStorage.setItem(`requests_${roomId}`, JSON.stringify(requestList));
+                }
+                
+                // 2. 빌런 목록에는 유지 (미입금 상태)
+                
+                // 3. UI 업데이트 및 모달 닫기
+                updateRoomContext();
+                closeDepositConfirmModal();
+                alert(`'${rejectedName}' 님의 정산 요청을 거절했습니다.`);
+            });
 
             addVillainBtn.addEventListener('click', () => {
                 const name = villainNameInput.value.trim();
